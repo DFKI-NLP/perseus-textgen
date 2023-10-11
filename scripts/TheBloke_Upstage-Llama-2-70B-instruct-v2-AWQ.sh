@@ -17,6 +17,11 @@ text-generation-launcher \
 --max-batch-prefill-tokens 1024 \
 --port 5000
 
-# Access the API at the following endpoint.
-# TODO describe how to find the node your job is running on
-# http://serv-33??.kl.dfki.de:5000
+# HOW-TO ACCESS THE (EXECUTABLE) API DOCUMENTATION:
+# First, you need to know the node your job is running on. Call this on the head node
+# to get the list of your running jobs:
+# squeue -u $USER
+# This should give you a list of jobs, each with a node name in the "NODELIST(REASON)" column, e.g. "serv-3316".
+# Then, you can access the API documentation at the following endpoint (replace $NODE with the node name):
+# http://$NODE.kl.dfki.de:5000/docs
+
