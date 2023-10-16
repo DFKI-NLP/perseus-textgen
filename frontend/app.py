@@ -1,8 +1,10 @@
 import json
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Iterator, Union
 
 import gradio as gr
 import requests
+from huggingface_hub import InferenceClient
+from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse
 
 # Prerequisites:
 # - start a backend server,
@@ -10,28 +12,26 @@ import requests
 
 DEFAULT_API_ENDPOINT = "http://serv-3316.kl.dfki.de:5000"
 DEFAULT_PARAMS = {
-    "best_of": 1,
-    "decoder_input_details": True,
-    "details": True,
-    "do_sample": True,
+    # "details": False,  # this is set to True in the code
+    "stream": False,
+    # model: Optional[str] = None,  # we do not provide this functionality
+    "do_sample": False,
     "max_new_tokens": 20,
-    "repetition_penalty": 1.03,
+    "best_of": None,
+    "repetition_penalty": None,
     "return_full_text": False,
     "seed": None,
-    "stop": [
-      "photographer"
-    ],
-    "temperature": 0.5,
-    "top_k": 10,
-    "top_n_tokens": 5,
-    "top_p": 0.95,
+    "stop_sequences": None,
+    "temperature": None,
+    "top_k": None,
+    "top_p": None,
     "truncate": None,
-    "typical_p": 0.95,
-    "watermark": True,
+    "typical_p": None,
+    "watermark": False,
+    "decoder_input_details": False,
 }
-
-DEFAULT_FORMATTING = {
-    "notes (this is not used)": "taken from https://huggingface.co/upstage/SOLAR-0-70b-16bit",
+DEFAULT_TEMPLATE = {
+    # "notes (this is not used)": "taken from https://huggingface.co/upstage/SOLAR-0-70b-16bit",
     "inputs": "### System: {system_prompt}\n{history}\n",
     "user_message": "### User: {user_prompt}\n",
     "bot_message": "### Assistant: {bot_response_without_prefix}\n",
@@ -46,62 +46,56 @@ def get_info(endpoint: str) -> str:
     return json.dumps(info, indent=2)
 
 
-def assemble_inputs(
-        system_prompt: str, chat_history: List[Tuple[str, str]], user_prompt: str, formatting: Dict[str, str]
+def assemble_prompt(
+        system_prompt: str, history: List[Tuple[str, str]], template: Dict[str, str]
 ) -> str:
-    history = ""
-    for hist_user_prompt, hist_bot_response in chat_history:
+    history_str = ""
+    for hist_user_prompt, hist_bot_response in history:
         if hist_user_prompt:
-            history += formatting['user_message'].format(user_prompt=hist_user_prompt)
+            history_str += template['user_message'].format(user_prompt=hist_user_prompt)
         if hist_bot_response:
-            history += formatting['bot_message'].format(bot_response_without_prefix=hist_bot_response)
-    if user_prompt:
-        history += formatting['user_message'].format(user_prompt=user_prompt)
-    inputs = formatting["inputs"].format(system_prompt=system_prompt, history=history) + formatting["bot_prefix"]
+            history_str += template['bot_message'].format(bot_response_without_prefix=hist_bot_response)
+
+    inputs = template["inputs"].format(system_prompt=system_prompt, history=history_str) + template["bot_prefix"]
     return inputs
 
 
-def generate(
-        system_prompt: str,
-        chat_history: List[Tuple[str, str]],
-        user_prompt: str,
-        endpoint: str,
-        parameters: dict,
-        formatting: Dict[str, str]
-) -> Tuple[str, requests.Response]:
-    inputs = assemble_inputs(
+def user(user_message, history):
+    return "", history + [[user_message, None]]
+
+
+def bot(
+        history, endpoint, parameters_str, formatting_str, system_prompt, log
+) -> Iterator[Tuple[List[List[str]], Union[TextGenerationResponse, TextGenerationStreamResponse]]]:
+    formatting = json.loads(formatting_str)
+    prompt = assemble_prompt(
         system_prompt=system_prompt,
-        chat_history=chat_history,
-        user_prompt=user_prompt,
-        formatting=formatting
+        history=history,
+        template=formatting
     )
-    url = f"{endpoint}/generate"
-    headers = {'Content-Type': 'application/json'}
-    params = {"inputs": inputs, "parameters": parameters}
-    # TODO: implement streaming
-    response = requests.post(url=url, json=params, headers=headers)
-    generated_text = json.loads(response.text)["generated_text"]
+    parameters = json.loads(parameters_str)
+    parameters["prompt"] = prompt
+    parameters["details"] = True
 
-    # strip bot prefix, if present
-    if "bot_prefix" in formatting and generated_text.startswith(formatting["bot_prefix"]):
-        generated_text = generated_text[len(formatting["bot_prefix"]):]
-
-    return generated_text, response
-
-
-def respond(user_message, chat_history, endpoint, params_str, formatting_str, system_prompt, log_str):
-    bot_message, response = generate(
-        system_prompt=system_prompt,
-        chat_history=chat_history,
-        user_prompt=user_message,
-        endpoint=endpoint,
-        parameters=json.loads(params_str),
-        formatting=json.loads(formatting_str),
-    )
-    chat_history.append((user_message, bot_message))
-    log_str += f"Request:\n{json.dumps(json.loads(response.request.body), indent=2)}\n\n"
-    log_str += f"Response:\n{json.dumps(json.loads(response.text), indent=2)}\n\n"
-    return "", chat_history, log_str
+    client = InferenceClient(model=endpoint)
+    log.append({})
+    if parameters.get("stream", False):
+        history[-1][1] = ""
+        for response in client.text_generation(**parameters):
+            history[-1][1] += response.token.text
+            log[-1] = {
+                "request": parameters,
+                "response": str(response),
+            }
+            yield history, log
+    else:
+        response = client.text_generation(**parameters)
+        history[-1][1] = response.generated_text
+        log[-1] = {
+            "request": parameters,
+            "response": str(response),
+        }
+        yield history, log
 
 
 def start():
@@ -114,14 +108,16 @@ def start():
     parameters_str = gr.Textbox(lines=10, label="Parameters", value=json.dumps(DEFAULT_PARAMS, indent=2))
     formatting_str = gr.Textbox(
         lines=5,
-        label="Prefixes (required keys: inputs, user_message, bot_message)",
-        value=json.dumps(DEFAULT_FORMATTING, indent=2),
+        label="Template (required keys: inputs, user_message, bot_message)",
+        value=json.dumps(DEFAULT_TEMPLATE, indent=2),
     )
     system_prompt = gr.Textbox(lines=5, label="System Prompt", value="You are a helpful assistant.")
     chatbot = gr.Chatbot()
     msg = gr.Textbox(label="User Prompt (hit Enter to send)")
+    clear = gr.Button("Clear")
 
-    log_str = gr.Textbox(lines=10, label="Requests and responses")
+    log = gr.JSON(label="Requests and responses", value=[])
+    streaming = gr.Checkbox(label="Streaming")
 
     with gr.Blocks(title="Simple TGI Frontend") as demo:
         with gr.Row():
@@ -133,22 +129,29 @@ def start():
                 with gr.Tab("Dialog"):
                     chatbot.render()
                 with gr.Tab("Request Log"):
-                    # show the actual inputs send to the backend and its responses
-                    log_str.render()
+                    log.render()
 
                 msg.render()
-                clear = gr.ClearButton([msg, chatbot])
                 msg.submit(
-                    respond,
-                    inputs=[msg, chatbot, endpoint, parameters_str, formatting_str, system_prompt, log_str],
-                    outputs=[msg, chatbot, log_str]
+                    user,
+                    inputs=[msg, chatbot],
+                    outputs=[msg, chatbot],
+                    queue=False
+                ).then(
+                    bot,
+                    inputs=[chatbot, endpoint, parameters_str, formatting_str, system_prompt, log],
+                    outputs=[chatbot, log],
                 )
+                clear.render()
+                clear.click(lambda: None, None, chatbot, queue=False)
 
             with gr.Column(scale=1):
                 parameters_str.render()
                 formatting_str.render()
                 system_prompt.render()
+                streaming.render()
 
+    demo.queue()
     demo.launch()
 
 
