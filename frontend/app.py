@@ -78,16 +78,21 @@ def bot(
 
     client = InferenceClient(model=endpoint)
     log.append({"request": {"endpoint": endpoint, "prompt": prompt, "details": True, **parameters}})
-    if parameters.get("stream", False):
-        history[-1][1] = ""
-        for response in client.text_generation(prompt=prompt, details=True, **parameters):
-            history[-1][1] += response.token.text
+    try:
+        if parameters.get("stream", False):
+            history[-1][1] = ""
+            for response in client.text_generation(prompt=prompt, details=True, **parameters):
+                history[-1][1] += response.token.text
+                log[-1]["response"] = str(response)
+                yield history, json.dumps(log, indent=2)
+        else:
+            response = client.text_generation(prompt=prompt, details=True, **parameters)
+            history[-1][1] = response.generated_text
             log[-1]["response"] = str(response)
             yield history, json.dumps(log, indent=2)
-    else:
-        response = client.text_generation(prompt=prompt, details=True, **parameters)
-        history[-1][1] = response.generated_text
-        log[-1]["response"] = str(response)
+    except Exception as e:
+        log[-1]["response"] = str(e)
+        del history[-1]
         yield history, json.dumps(log, indent=2)
 
 
