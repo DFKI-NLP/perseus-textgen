@@ -102,9 +102,8 @@ def bot(
 def start():
     # taken from https://www.gradio.app/guides/creating-a-custom-chatbot-with-blocks
     # endpoint with info
-    endpoint = gr.Textbox(lines=1, label="Endpoint", value=DEFAULT_API_ENDPOINT)
+    endpoint = gr.Textbox(lines=1, label="Address", value=DEFAULT_API_ENDPOINT)
     endpoint_info = gr.JSON(label="Endpoint info")
-    endpoint_info_btn = gr.Button(value="Get info")
     # chatbot with parameters, prefixes, and system prompt
     parameters_str = gr.Code(label="Parameters", language="json", lines=10, value=json.dumps(DEFAULT_PARAMS, indent=2))
     formatting_str = gr.Code(
@@ -119,15 +118,17 @@ def start():
     clear = gr.Button("Clear")
 
     log_str = gr.Code(label="Requests and responses", language="json", lines=10, value="[]", interactive=False)
-    streaming = gr.Checkbox(label="Streaming")
 
     with gr.Blocks(title="Simple TGI Frontend") as demo:
         with gr.Row():
             with gr.Column(scale=2):
-                endpoint.render()
-                endpoint_info.render()
-                endpoint_info_btn.render()
-                endpoint_info_btn.click(get_info, inputs=endpoint, outputs=endpoint_info)
+                with gr.Tab("Endpoint"):
+                    endpoint.render()
+                with gr.Tab("Endpoint Info") as endpoint_info_tab:
+                    endpoint_info.render()
+                endpoint_info_tab.select(get_info, inputs=endpoint, outputs=endpoint_info, queue=False)
+                # dummy element to separate above tabs from below tabs
+                inbtw = gr.Button("Between", visible=False)
                 with gr.Tab("Dialog"):
                     chatbot.render()
                 with gr.Tab("Request Log"):
@@ -151,7 +152,6 @@ def start():
                 parameters_str.render()
                 formatting_str.render()
                 system_prompt.render()
-                streaming.render()
 
     demo.queue()
     demo.launch()
