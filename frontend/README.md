@@ -1,4 +1,6 @@
-# A Simple Frontend for Text-Generation-Inference
+# A Simple, but Flexible Frontend for Text-Generation-Inference
+
+![Screenshot](./frontend.png)
 
 ## Setup
 1. Install requirements: `pip install -r requirements.txt`
