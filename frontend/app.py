@@ -30,9 +30,9 @@ DEFAULT_PARAMS = {
     "watermark": False,
     "decoder_input_details": False,
 }
+# taken from https://huggingface.co/upstage/SOLAR-0-70b-16bit
 DEFAULT_TEMPLATE = {
-    # "notes (this is not used)": "taken from https://huggingface.co/upstage/SOLAR-0-70b-16bit",
-    "inputs": "### System: {system_prompt}\n{history}\n",
+    "prompt": "### System: {system_prompt}\n{history}\n",
     "user_message": "### User: {user_prompt}\n",
     "bot_message": "### Assistant: {bot_response_without_prefix}\n",
     "bot_prefix": "### Assistant: ",
@@ -56,8 +56,8 @@ def assemble_prompt(
         if hist_bot_response:
             history_str += template['bot_message'].format(bot_response_without_prefix=hist_bot_response)
 
-    inputs = template["inputs"].format(system_prompt=system_prompt, history=history_str) + template["bot_prefix"]
-    return inputs
+    prompt = template["prompt"].format(system_prompt=system_prompt, history=history_str) + template["bot_prefix"]
+    return prompt
 
 
 def user(user_message, history):
@@ -65,37 +65,29 @@ def user(user_message, history):
 
 
 def bot(
-        history, endpoint, parameters_str, formatting_str, system_prompt, log_str
+        history, endpoint, parameters_str, template_str, system_prompt, log_str
 ) -> Iterator[Tuple[List[List[str]], Union[TextGenerationResponse, TextGenerationStreamResponse]]]:
     log = json.loads(log_str)
-    formatting = json.loads(formatting_str)
+    template = json.loads(template_str)
     prompt = assemble_prompt(
         system_prompt=system_prompt,
         history=history,
-        template=formatting
+        template=template
     )
     parameters = json.loads(parameters_str)
-    parameters["prompt"] = prompt
-    parameters["details"] = True
 
     client = InferenceClient(model=endpoint)
-    log.append({})
+    log.append({"request": {"endpoint": endpoint, "prompt": prompt, "details": True, **parameters}})
     if parameters.get("stream", False):
         history[-1][1] = ""
-        for response in client.text_generation(**parameters):
+        for response in client.text_generation(prompt=prompt, details=True, **parameters):
             history[-1][1] += response.token.text
-            log[-1] = {
-                "request": parameters,
-                "response": str(response),
-            }
+            log[-1]["response"] = str(response)
             yield history, json.dumps(log, indent=2)
     else:
-        response = client.text_generation(**parameters)
+        response = client.text_generation(prompt=prompt, details=True, **parameters)
         history[-1][1] = response.generated_text
-        log[-1] = {
-            "request": parameters,
-            "response": str(response),
-        }
+        log[-1]["response"] = str(response)
         yield history, json.dumps(log, indent=2)
 
 
@@ -106,10 +98,10 @@ def start():
     endpoint_info = gr.JSON(label="Endpoint info")
     # chatbot with parameters, prefixes, and system prompt
     parameters_str = gr.Code(label="Parameters", language="json", lines=10, value=json.dumps(DEFAULT_PARAMS, indent=2))
-    formatting_str = gr.Code(
-        label="Template (required keys: inputs, user_message, bot_message)",
+    template_str = gr.Code(
+        label="Template (required keys: prompt, user_message, bot_message)",
         language="json",
-        lines=5,
+        lines=6,
         value=json.dumps(DEFAULT_TEMPLATE, indent=2),
     )
     system_prompt = gr.Textbox(lines=5, label="System Prompt", value="You are a helpful assistant.")
@@ -142,7 +134,7 @@ def start():
                     queue=False
                 ).then(
                     bot,
-                    inputs=[chatbot, endpoint, parameters_str, formatting_str, system_prompt, log_str],
+                    inputs=[chatbot, endpoint, parameters_str, template_str, system_prompt, log_str],
                     outputs=[chatbot, log_str],
                 )
                 clear.render()
@@ -150,7 +142,7 @@ def start():
 
             with gr.Column(scale=1):
                 parameters_str.render()
-                formatting_str.render()
+                template_str.render()
                 system_prompt.render()
 
     demo.queue()
