@@ -32,7 +32,7 @@ DEFAULT_PARAMS = {
 }
 # taken from https://huggingface.co/upstage/SOLAR-0-70b-16bit
 DEFAULT_TEMPLATE = {
-    "prompt": "### System: {system_prompt}\n{history}\n",
+    "prompt": "### System: {system_prompt}\n{history}{bot_prefix}",
     "user_message": "### User: {user_prompt}\n",
     "bot_message": "### Assistant: {bot_response_without_prefix}\n",
     "bot_prefix": "### Assistant: ",
@@ -49,6 +49,7 @@ def get_info(endpoint: str) -> str:
 def assemble_prompt(
         system_prompt: str, history: List[Tuple[str, str]], template: Dict[str, str]
 ) -> str:
+    # assemble the history
     history_str = ""
     for hist_user_prompt, hist_bot_response in history:
         if hist_user_prompt:
@@ -56,7 +57,12 @@ def assemble_prompt(
         if hist_bot_response:
             history_str += template['bot_message'].format(bot_response_without_prefix=hist_bot_response)
 
-    prompt = template["prompt"].format(system_prompt=system_prompt, history=history_str) + template["bot_prefix"]
+    # create the final prompt
+    prompt = template["prompt"].format(
+        system_prompt=system_prompt,
+        history=history_str,
+        bot_prefix=template["bot_prefix"],
+    )
     return prompt
 
 
