@@ -119,7 +119,7 @@ def start():
         value=json.dumps(DEFAULT_TEMPLATE, indent=2),
     )
     system_prior = gr.Textbox(lines=5, label="System Prior", value="You are a helpful assistant.")
-    chatbot = gr.Chatbot(show_copy_button=True)
+    chatbot = gr.Chatbot(label="Chat", show_copy_button=True)
     msg = gr.Textbox(label="User Prompt (hit Enter to send)")
     clear = gr.Button("Clear")
     undo = gr.Button("Undo")
@@ -134,33 +134,35 @@ def start():
                 with gr.Tab("Endpoint Info") as endpoint_info_tab:
                     endpoint_info.render()
                 endpoint_info_tab.select(get_info, inputs=endpoint, outputs=endpoint_info, queue=False)
-                # dummy element to separate above tabs from below tabs
-                inbtw = gr.Button("Between", visible=False)
-                with gr.Tab("Dialog"):
-                    chatbot.render()
-                with gr.Tab("Request Log"):
-                    log_str.render()
 
-                msg.render()
-                msg.submit(
-                    user,
-                    inputs=[msg, chatbot],
-                    outputs=[msg, chatbot],
-                    queue=False
-                ).then(
-                    bot,
-                    inputs=[chatbot, endpoint, parameters_str, template_str, system_prior, log_str],
-                    outputs=[chatbot, log_str],
-                )
-                undo.render()
-                undo.click(lambda history: history[:-1], chatbot, chatbot, queue=False)
-                clear.render()
-                clear.click(lambda: None, None, chatbot, queue=False)
+                with gr.Group():
+                    with gr.Tab("Dialog"):
+                        chatbot.render()
+                    with gr.Tab("Request Log"):
+                        log_str.render()
+
+                    msg.render()
+                    msg.submit(
+                        user,
+                        inputs=[msg, chatbot],
+                        outputs=[msg, chatbot],
+                        queue=False
+                    ).then(
+                        bot,
+                        inputs=[chatbot, endpoint, parameters_str, template_str, system_prior, log_str],
+                        outputs=[chatbot, log_str],
+                    )
+
+                    undo.render()
+                    undo.click(lambda history: history[:-1], chatbot, chatbot, queue=False)
+                    clear.render()
+                    clear.click(lambda: None, None, chatbot, queue=False)
 
             with gr.Column(scale=1):
                 parameters_str.render()
-                template_str.render()
-                system_prior.render()
+                with gr.Group():
+                    template_str.render()
+                    system_prior.render()
 
     demo.queue()
     demo.launch()
