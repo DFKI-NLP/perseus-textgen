@@ -1,5 +1,5 @@
 import json
-from typing import List, Tuple, Dict, Optional, Iterator, Union
+from typing import List, Tuple, Dict, Iterator, Union
 
 import gradio as gr
 import requests
@@ -102,13 +102,14 @@ def start():
     # taken from https://www.gradio.app/guides/creating-a-custom-chatbot-with-blocks
     # endpoint with info
     endpoint = gr.Textbox(lines=1, label="Endpoint", value=DEFAULT_API_ENDPOINT)
-    endpoint_info = gr.Textbox(lines=1, label="Endpoint info")
+    endpoint_info = gr.JSON(label="Endpoint info")
     endpoint_info_btn = gr.Button(value="Get info")
     # chatbot with parameters, prefixes, and system prompt
-    parameters_str = gr.Textbox(lines=10, label="Parameters", value=json.dumps(DEFAULT_PARAMS, indent=2))
-    formatting_str = gr.Textbox(
-        lines=5,
+    parameters_str = gr.Code(label="Parameters", language="json", lines=10, value=json.dumps(DEFAULT_PARAMS, indent=2))
+    formatting_str = gr.Code(
         label="Template (required keys: inputs, user_message, bot_message)",
+        language="json",
+        lines=5,
         value=json.dumps(DEFAULT_TEMPLATE, indent=2),
     )
     system_prompt = gr.Textbox(lines=5, label="System Prompt", value="You are a helpful assistant.")
