@@ -65,8 +65,9 @@ def user(user_message, history):
 
 
 def bot(
-        history, endpoint, parameters_str, formatting_str, system_prompt, log
+        history, endpoint, parameters_str, formatting_str, system_prompt, log_str
 ) -> Iterator[Tuple[List[List[str]], Union[TextGenerationResponse, TextGenerationStreamResponse]]]:
+    log = json.loads(log_str)
     formatting = json.loads(formatting_str)
     prompt = assemble_prompt(
         system_prompt=system_prompt,
@@ -87,7 +88,7 @@ def bot(
                 "request": parameters,
                 "response": str(response),
             }
-            yield history, log
+            yield history, json.dumps(log, indent=2)
     else:
         response = client.text_generation(**parameters)
         history[-1][1] = response.generated_text
@@ -95,7 +96,7 @@ def bot(
             "request": parameters,
             "response": str(response),
         }
-        yield history, log
+        yield history, json.dumps(log, indent=2)
 
 
 def start():
@@ -117,7 +118,7 @@ def start():
     msg = gr.Textbox(label="User Prompt (hit Enter to send)")
     clear = gr.Button("Clear")
 
-    log = gr.JSON(label="Requests and responses", value=[])
+    log_str = gr.Code(label="Requests and responses", language="json", lines=10, value="[]", interactive=False)
     streaming = gr.Checkbox(label="Streaming")
 
     with gr.Blocks(title="Simple TGI Frontend") as demo:
@@ -130,7 +131,7 @@ def start():
                 with gr.Tab("Dialog"):
                     chatbot.render()
                 with gr.Tab("Request Log"):
-                    log.render()
+                    log_str.render()
 
                 msg.render()
                 msg.submit(
@@ -140,8 +141,8 @@ def start():
                     queue=False
                 ).then(
                     bot,
-                    inputs=[chatbot, endpoint, parameters_str, formatting_str, system_prompt, log],
-                    outputs=[chatbot, log],
+                    inputs=[chatbot, endpoint, parameters_str, formatting_str, system_prompt, log_str],
+                    outputs=[chatbot, log_str],
                 )
                 clear.render()
                 clear.click(lambda: None, None, chatbot, queue=False)
