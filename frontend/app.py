@@ -32,10 +32,10 @@ DEFAULT_PARAMS = {
 }
 # taken from https://huggingface.co/upstage/SOLAR-0-70b-16bit
 DEFAULT_TEMPLATE = {
-    "prompt": "### System: {system_prompt}\n{history}{bot_prefix}",
-    "user_message": "### User: {user_prompt}\n",
-    "bot_message": "### Assistant: {bot_response_without_prefix}\n",
-    "bot_prefix": "### Assistant: ",
+    "prompt": "{system_prompt}{history}### Assistant: ",
+    "system_prompt": "### System: {system_prior}\n",
+    "user_prompt": "### User: {user_message}\n",
+    "bot_prompt": "### Assistant: {bot_message}\n",
 }
 
 
@@ -47,22 +47,25 @@ def get_info(endpoint: str) -> str:
 
 
 def assemble_prompt(
-        system_prompt: str, history: List[Tuple[str, str]], template: Dict[str, str]
+        system_prior: str, history: List[Tuple[str, str]], template: Dict[str, str]
 ) -> str:
+    # assemble the system prompt
+    system_prompt = template["system_prompt"].format(system_prior=system_prior)
+
     # assemble the history
     history_str = ""
-    for hist_user_prompt, hist_bot_response in history:
-        if hist_user_prompt:
-            history_str += template['user_message'].format(user_prompt=hist_user_prompt)
-        if hist_bot_response:
-            history_str += template['bot_message'].format(bot_response_without_prefix=hist_bot_response)
+    for user_message, bot_message in history:
+        if user_message:
+            history_str += template['user_prompt'].format(user_message=user_message)
+        if bot_message:
+            history_str += template['bot_prompt'].format(bot_message=bot_message)
 
     # create the final prompt
     prompt = template["prompt"].format(
         system_prompt=system_prompt,
         history=history_str,
-        bot_prefix=template["bot_prefix"],
     )
+
     return prompt
 
 
@@ -71,12 +74,12 @@ def user(user_message, history):
 
 
 def bot(
-        history, endpoint, parameters_str, template_str, system_prompt, log_str
+        history, endpoint, parameters_str, template_str, system_prior, log_str
 ) -> Iterator[Tuple[List[List[str]], Union[TextGenerationResponse, TextGenerationStreamResponse]]]:
     log = json.loads(log_str)
     template = json.loads(template_str)
     prompt = assemble_prompt(
-        system_prompt=system_prompt,
+        system_prior=system_prior,
         history=history,
         template=template
     )
@@ -110,12 +113,12 @@ def start():
     # chatbot with parameters, prefixes, and system prompt
     parameters_str = gr.Code(label="Parameters", language="json", lines=10, value=json.dumps(DEFAULT_PARAMS, indent=2))
     template_str = gr.Code(
-        label="Template (required keys: prompt, user_message, bot_message)",
+        label="Template (required keys: prompt, system_prompt, user_prompt, bot_prompt)",
         language="json",
         lines=6,
         value=json.dumps(DEFAULT_TEMPLATE, indent=2),
     )
-    system_prompt = gr.Textbox(lines=5, label="System Prompt", value="You are a helpful assistant.")
+    system_prior = gr.Textbox(lines=5, label="System Prior", value="You are a helpful assistant.")
     chatbot = gr.Chatbot(show_copy_button=True)
     msg = gr.Textbox(label="User Prompt (hit Enter to send)")
     clear = gr.Button("Clear")
@@ -145,7 +148,7 @@ def start():
                     queue=False
                 ).then(
                     bot,
-                    inputs=[chatbot, endpoint, parameters_str, template_str, system_prompt, log_str],
+                    inputs=[chatbot, endpoint, parameters_str, template_str, system_prior, log_str],
                     outputs=[chatbot, log_str],
                 )
                 clear.render()
@@ -154,7 +157,7 @@ def start():
             with gr.Column(scale=1):
                 parameters_str.render()
                 template_str.render()
-                system_prompt.render()
+                system_prior.render()
 
     demo.queue()
     demo.launch()
