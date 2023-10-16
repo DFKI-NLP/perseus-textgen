@@ -13,7 +13,7 @@ from huggingface_hub.inference._text_generation import TextGenerationResponse, T
 DEFAULT_API_ENDPOINT = "http://serv-3316.kl.dfki.de:5000"
 DEFAULT_PARAMS = {
     # "details": False,  # this is set to True in the code
-    "stream": False,
+    "stream": True,
     # model: Optional[str] = None,  # we do not provide this functionality
     "do_sample": False,
     "max_new_tokens": 20,
