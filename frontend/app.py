@@ -122,6 +122,7 @@ def start():
     chatbot = gr.Chatbot(show_copy_button=True)
     msg = gr.Textbox(label="User Prompt (hit Enter to send)")
     clear = gr.Button("Clear")
+    undo = gr.Button("Undo")
 
     log_str = gr.Code(label="Requests and responses", language="json", lines=10, value="[]", interactive=False)
 
@@ -151,6 +152,8 @@ def start():
                     inputs=[chatbot, endpoint, parameters_str, template_str, system_prior, log_str],
                     outputs=[chatbot, log_str],
                 )
+                undo.render()
+                undo.click(lambda history: history[:-1], chatbot, chatbot, queue=False)
                 clear.render()
                 clear.click(lambda: None, None, chatbot, queue=False)
 
