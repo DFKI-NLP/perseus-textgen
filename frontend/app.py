@@ -113,7 +113,7 @@ def start():
         value=json.dumps(DEFAULT_TEMPLATE, indent=2),
     )
     system_prompt = gr.Textbox(lines=5, label="System Prompt", value="You are a helpful assistant.")
-    chatbot = gr.Chatbot()
+    chatbot = gr.Chatbot(show_copy_button=True)
     msg = gr.Textbox(label="User Prompt (hit Enter to send)")
     clear = gr.Button("Clear")
 
