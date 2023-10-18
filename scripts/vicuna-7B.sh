@@ -1,7 +1,7 @@
 # NOTES:
-# - model card: https://huggingface.co/lmsys/vicuna-13b-v1.5
-# Works on A100-40GB, A100-PCI, RTX3090
-# Doesn't work on RTX6000
+# - model card: https://huggingface.co/lmsys/vicuna-7b-v1.5
+# Works on A100-PCI, RTX3090
+# Doesn't work on V100-32GB, RTX6000
 
 srun -K \
 --container-image=/netscratch/enroot/huggingface_text-generation-inference_1.1.0.sqsh \
@@ -10,7 +10,7 @@ srun -K \
 -p A100-40GB     \
 --mem 64GB \
 --gpus 1       \
---export MODEL_ID=lmsys/vicuna-13b-v1.5 \
+--export MODEL_ID=lmsys/vicuna-7b-v1.5 \
 text-generation-launcher \
 --port 5000
 

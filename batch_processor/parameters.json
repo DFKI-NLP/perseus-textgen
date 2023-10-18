@@ -1,0 +1,4 @@
+{
+    "max_new_tokens": 20,
+    "temperature": 0.5
+}

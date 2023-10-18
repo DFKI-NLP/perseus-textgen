@@ -1,5 +1,6 @@
 # NOTES:
 # - model card: https://huggingface.co/google/flan-t5-large
+# Works on A100-40GB, A100-PCI V100-32GB, RTX6000, RTX3090
 
 srun -K \
 --container-image=/netscratch/enroot/text-generation-inference_1.0.3.sqsh \

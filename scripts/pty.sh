@@ -1,18 +1,18 @@
 # NOTES:
-# - model card: https://huggingface.co/lmsys/vicuna-13b-v1.5
-# Works on A100-40GB, A100-PCI, RTX3090
-# Doesn't work on RTX6000
+# - script serves to open an empty session and manually start the llms
 
 srun -K \
 --container-image=/netscratch/enroot/huggingface_text-generation-inference_1.1.0.sqsh \
 --container-mounts=/netscratch:/netscratch,/ds:/ds,/ds/models/llms/cache:/data,$HOME:$HOME     \
 --container-workdir=$HOME       \
--p A100-40GB     \
+-p RTX3090    \
 --mem 64GB \
 --gpus 1       \
---export MODEL_ID=lmsys/vicuna-13b-v1.5 \
-text-generation-launcher \
---port 5000
+--pty /bin/bash
+
+# To start TGI from there:
+#   -$text-generator-launcher --port 5000 --model-id [HF model name or local path to predownloaded model]
+# Double check if you allocate enough memory for your model
 
 # HOW-TO ACCESS THE (EXECUTABLE) API DOCUMENTATION:
 # First, you need to know the node your job is running on. Call this on the head node
