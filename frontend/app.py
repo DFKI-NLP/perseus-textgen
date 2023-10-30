@@ -1,5 +1,6 @@
 import json
 from functools import partial
+from pathlib import Path
 from typing import List, Tuple, Dict, Iterator, Union
 
 import gradio as gr
@@ -31,6 +32,7 @@ DEFAULT_PARAMS = {
     "watermark": False,
     "decoder_input_details": False,
 }
+TEMPLATES_FILE = Path(__file__).parent / "templates.json"
 DEFAULT_TEMPLATE = "upstage/SOLAR-0-70b-16bit"
 
 
@@ -113,7 +115,7 @@ def update_template_and_system_prior(template_key, template_str, system_prior, t
 
 def start():
     # load templates from json file
-    templates = json.load(open("templates.json"))
+    templates = json.load(open(TEMPLATES_FILE))
     # endpoint with info
     endpoint = gr.Textbox(lines=1, label="Address", value=DEFAULT_API_ENDPOINT)
     endpoint_info = gr.JSON(label="Endpoint info")
