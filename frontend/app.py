@@ -1,4 +1,5 @@
 import json
+from functools import partial
 from typing import List, Tuple, Dict, Iterator, Union
 
 import gradio as gr
@@ -30,13 +31,7 @@ DEFAULT_PARAMS = {
     "watermark": False,
     "decoder_input_details": False,
 }
-# taken from https://huggingface.co/upstage/SOLAR-0-70b-16bit
-DEFAULT_TEMPLATE = {
-    "prompt": "{system_prompt}{history}### Assistant: ",
-    "system_prompt": "### System: {system_prior}\n",
-    "user_prompt": "### User: {user_message}\n",
-    "bot_prompt": "### Assistant: {bot_message}\n",
-}
+DEFAULT_TEMPLATE = "upstage/SOLAR-0-70b-16bit"
 
 
 def get_info(endpoint: str) -> str:
@@ -52,18 +47,21 @@ def assemble_prompt(
     # assemble the system prompt
     system_prompt = template["system_prompt"].format(system_prior=system_prior)
 
-    # assemble the history
+    # assemble the user prompt from the last history entry
+    user_prompt = template['user_prompt'].format(user_message=history[-1][0])
+
+    # assemble the remaining history
     history_str = ""
-    for user_message, bot_message in history:
-        if user_message:
-            history_str += template['user_prompt'].format(user_message=user_message)
-        if bot_message:
-            history_str += template['bot_prompt'].format(bot_message=bot_message)
+    for user_message, bot_message in history[:-1]:
+        user_prompt = template['user_prompt'].format(user_message=user_message)
+        bot_prompt = template['bot_prompt'].format(bot_message=bot_message)
+        history_str = template['history'].format(history=history_str, user_prompt=user_prompt, bot_prompt=bot_prompt)
 
     # create the final prompt
     prompt = template["prompt"].format(
         system_prompt=system_prompt,
         history=history_str,
+        user_prompt=user_prompt,
     )
 
     return prompt
@@ -105,18 +103,31 @@ def bot(
         yield history, json.dumps(log, indent=2)
 
 
+def update_template_and_system_prior(template_key, template_str, system_prior, templates):
+    if template_key is None:
+        return template_str, system_prior
+    new_template_data = templates[template_key]
+    new_template_str = json.dumps(new_template_data["template"], indent=2)
+    return new_template_str, new_template_data["system_prior"]
+
+
 def start():
-    # taken from https://www.gradio.app/guides/creating-a-custom-chatbot-with-blocks
+    # load templates from json file
+    templates = json.load(open("templates.json"))
     # endpoint with info
     endpoint = gr.Textbox(lines=1, label="Address", value=DEFAULT_API_ENDPOINT)
     endpoint_info = gr.JSON(label="Endpoint info")
     # chatbot with parameters, prefixes, and system prompt
     parameters_str = gr.Code(label="Parameters", language="json", lines=10, value=json.dumps(DEFAULT_PARAMS, indent=2))
     template_str = gr.Code(
-        label="Template (required keys: prompt, system_prompt, user_prompt, bot_prompt)",
+        label="Template (required keys: prompt, system_prompt, history, user_prompt, bot_prompt)",
         language="json",
         lines=6,
-        value=json.dumps(DEFAULT_TEMPLATE, indent=2),
+        value=json.dumps(templates[DEFAULT_TEMPLATE]["template"], indent=2),
+    )
+    select_template = gr.Dropdown(
+        label="Load Template and System Prior (overwrites existing values)",
+        choices=list(templates),
     )
     system_prior = gr.Textbox(lines=5, label="System Prior", value="You are a helpful assistant.")
     chatbot = gr.Chatbot(label="Chat", show_copy_button=True)
@@ -163,6 +174,13 @@ def start():
                 with gr.Group():
                     template_str.render()
                     system_prior.render()
+                    select_template.render()
+                    select_template.change(
+                        partial(update_template_and_system_prior, templates=templates),
+                        inputs=[select_template, template_str, system_prior],
+                        outputs=[template_str, system_prior],
+                        queue=False,
+                    )
 
     demo.queue()
     demo.launch()
