@@ -31,5 +31,16 @@
             "bot_prompt": "ASSISTANT: {bot_message}"
         },
         "system_prior": "Du bist ein hilfreicher Assistent."
+    },
+    "jordiclive/Llama-2-70b-oasst-1-200": {
+        "description": "Based on information from https://huggingface.co/jordiclive/Llama-2-70b-oasst-1-200",
+        "template": {
+          "prompt": "{system_prompt}{history}{user_prompt}<|assistant|>",
+          "system_prompt": "{system_prior}",
+          "history": "{history}{user_prompt}{bot_prompt}",
+          "user_prompt": "<|prompter|>{user_message}</s>",
+          "bot_prompt": "<|assistant|>{bot_message}</s>"
+        },
+        "system_prior": ""
     }
 }
