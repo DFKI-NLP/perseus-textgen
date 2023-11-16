@@ -1,40 +1,35 @@
+import time
 import json
-from functools import partial
+import requests
 from pathlib import Path
-from typing import List, Tuple, Dict, Iterator, Union
+from typing import List, Union, Iterator
+from functools import partial
 
 import gradio as gr
-import requests
-from huggingface_hub import InferenceClient
-from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse
+from langchain.prompts.prompt import PromptTemplate
+from langchain.memory import ConversationBufferMemory
+from langchain.llms import HuggingFaceTextGenInference
+from langchain.chains import ConversationChain
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
-# Prerequisites:
-# - start a backend server,
-#   e.g. with any of the scripts in https://github.com/DFKI-NLP/perseus-textgen/blob/master/scripts
-
-DEFAULT_API_ENDPOINT = "http://serv-3316.kl.dfki.de:5000"
+DEFAULT_API_ENDPOINT = "http://serv-3337.kl.dfki.de:5000"
 DEFAULT_PARAMS = {
-    # "details": False,  # this is set to True in the code
-    "stream": True,
-    # model: Optional[str] = None,  # we do not provide this functionality
+    "streaming": False,
     "do_sample": False,
     "max_new_tokens": 20,
-    "best_of": None,
     "repetition_penalty": None,
     "return_full_text": False,
     "seed": None,
-    "stop_sequences": None,
-    "temperature": None,
+    "stop_sequences": [],
+    "temperature": 0.1,
     "top_k": None,
-    "top_p": None,
+    "top_p": 0.95,
     "truncate": None,
-    "typical_p": None,
+    "typical_p": 0.95,
     "watermark": False,
-    "decoder_input_details": False,
 }
 TEMPLATES_FILE = Path(__file__).parent / "templates.json"
-DEFAULT_TEMPLATE = "upstage/SOLAR-0-70b-16bit"
-
+DEFAULT_TEMPLATE = "llama-2"
 
 def get_info(endpoint: str) -> str:
     url = f"{endpoint}/info"
@@ -42,68 +37,59 @@ def get_info(endpoint: str) -> str:
     info = json.loads(r.text)
     return json.dumps(info, indent=2)
 
-
-def assemble_prompt(
-        system_prior: str, history: List[Tuple[str, str]], template: Dict[str, str]
-) -> str:
-    # assemble the system prompt
-    system_prompt = template["system_prompt"].format(system_prior=system_prior)
-
-    # assemble the user prompt from the last history entry
-    user_prompt = template['user_prompt'].format(user_message=history[-1][0])
-
-    # assemble the remaining history
-    history_str = ""
-    for user_message, bot_message in history[:-1]:
-        user_prompt = template['user_prompt'].format(user_message=user_message)
-        bot_prompt = template['bot_prompt'].format(bot_message=bot_message)
-        history_str = template['history'].format(history=history_str, user_prompt=user_prompt, bot_prompt=bot_prompt)
-
-    # create the final prompt
-    prompt = template["prompt"].format(
-        system_prompt=system_prompt,
-        history=history_str,
-        user_prompt=user_prompt,
-    )
-
-    return prompt
-
-
 def user(user_message, history):
     return "", history + [[user_message, None]]
 
-
 def bot(
-        history, endpoint, parameters_str, template_str, system_prior, log_str
-) -> Iterator[Tuple[List[List[str]], Union[TextGenerationResponse, TextGenerationStreamResponse]]]:
+    history: List[List[str]],
+    endpoint: str, 
+    parameter_str: str,
+    template_str: str,
+    system_prior: str,
+    log_str: str,
+) -> Iterator[List[List[str]]]:
+
     log = json.loads(log_str)
-    template = json.loads(template_str)
-    prompt = assemble_prompt(
-        system_prior=system_prior,
-        history=history,
-        template=template
+
+    parameters = json.loads(parameter_str)
+    llm = HuggingFaceTextGenInference(
+        inference_server_url=endpoint,
+        **parameters
+    )   
+    template_str = template_str.replace("{system_prompt}", system_prior)
+    prompt_template = PromptTemplate(
+        input_variables=["history", "input"],
+        template=template_str,
+        template_format="jinja2"
     )
-    parameters = json.loads(parameters_str)
+    memory = ConversationBufferMemory()
+    for utterance_pair in history[:-1]:
+        memory.save_context(
+            inputs={"input": utterance_pair[0]},
+            outputs={"output": utterance_pair[1]}
+        )
+    llm_chain = ConversationChain(
+        prompt=prompt_template,
+        llm=llm,
+        verbose=True,
+        memory=memory,
+    )
 
-    client = InferenceClient(model=endpoint)
-    log.append({"request": {"endpoint": endpoint, "prompt": prompt, "details": True, **parameters}})
-    try:
-        if parameters.get("stream", False):
-            history[-1][1] = ""
-            for response in client.text_generation(prompt=prompt, details=True, **parameters):
-                history[-1][1] += response.token.text
-                log[-1]["response"] = str(response)
-                yield history, json.dumps(log, indent=2)
-        else:
-            response = client.text_generation(prompt=prompt, details=True, **parameters)
-            history[-1][1] = response.generated_text
-            log[-1]["response"] = str(response)
+    latest_user_message = history[-1][0].strip()
+    log.append({"request": {"endpoint": endpoint, "prompt": latest_user_message, "history": memory.buffer, "details": True, **parameters}})
+    history[-1][1] = ""
+    log[-1]["response"] = ""
+    if parameters.get("streaming", False):
+        for response in llm_chain.predict(input=latest_user_message, callbacks=[StreamingStdOutCallbackHandler()]):
+            history[-1][1] += response
+            log[-1]["response"] += str(response)
+            time.sleep(0.02)
             yield history, json.dumps(log, indent=2)
-    except Exception as e:
-        log[-1]["response"] = str(e)
-        del history[-1]
+    else:
+        response = llm_chain.predict(input=latest_user_message, callbacks=[StreamingStdOutCallbackHandler()])
+        history[-1][1] = response
+        log[-1]["response"] += str(response)
         yield history, json.dumps(log, indent=2)
-
 
 def update_template_and_system_prior(template_key, template_str, system_prior, templates):
     if template_key is None:
@@ -111,7 +97,6 @@ def update_template_and_system_prior(template_key, template_str, system_prior, t
     new_template_data = templates[template_key]
     new_template_str = json.dumps(new_template_data["template"], indent=2)
     return new_template_str, new_template_data["system_prior"]
-
 
 def start():
     # load templates from json file
@@ -185,8 +170,7 @@ def start():
                     )
 
     demo.queue()
-    demo.launch()
-
+    demo.launch(debug=True)
 
 if __name__ == "__main__":
     start()
