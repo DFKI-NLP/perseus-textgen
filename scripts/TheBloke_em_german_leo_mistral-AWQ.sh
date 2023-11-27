@@ -5,6 +5,8 @@
 # - prompt format: Du bist ein hilfreicher Assistent. USER: <instruction> ASSISTANT:
 
 MODEL_ID=TheBloke/em_german_leo_mistral-AWQ
+REVISION=54c7dd05b55124aab3450f94203e1970f9286445
+
 srun -K \
 --container-image=/netscratch/enroot/huggingface_text-generation-inference_1.1.0.sqsh \
 --container-mounts=/netscratch:/netscratch,/ds:/ds,/ds/models/llms/cache:/data,$HOME:$HOME \
@@ -12,8 +14,9 @@ srun -K \
 -p A100-PCI \
 --mem 64GB \
 --gpus 1 \
---export MODEL_ID=$MODEL_ID \
 text-generation-launcher \
+--model_id $MODEL_ID \
+--revision $REVISION \
 --quantize awq \
 --max-batch-prefill-tokens 1024 \
 --port 5000
