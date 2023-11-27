@@ -1,7 +1,7 @@
-# NOTES:
-# - model card: 
-# Works on A100-40GB, A100-PCI, RTX3090
-# Doesn't work on RTX6000
+# usage: local.sh <model_id_or_local_path>
+# e.g. local.sh /ds/models/llms/llama_hf/7b
+
+MODEL_ID=$1
 
 srun -K \
 --container-image=/netscratch/enroot/huggingface_text-generation-inference_1.1.0.sqsh \
@@ -10,8 +10,8 @@ srun -K \
 -p A100-40GB     \
 --mem 64GB \
 --gpus 1       \
---export MODEL_ID=/ds/models/llms/llama_hf/7b \
 text-generation-launcher \
+--model_id $MODEL_ID \
 --port 5000
 
 # HOW-TO ACCESS THE (EXECUTABLE) API DOCUMENTATION:
