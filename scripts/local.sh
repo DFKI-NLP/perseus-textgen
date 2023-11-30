@@ -11,7 +11,7 @@ srun -K \
 --mem 64GB \
 --gpus 1       \
 text-generation-launcher \
---model_id $MODEL_ID \
+--model-id $MODEL_ID \
 --port 5000
 
 # HOW-TO ACCESS THE (EXECUTABLE) API DOCUMENTATION:

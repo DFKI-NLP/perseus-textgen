@@ -9,7 +9,7 @@ srun -K \
 -p RTX3090 \
 --mem 16GB --gpus 1 \
 text-generation-launcher \
---model_id google/flan-t5-large \
+--model-id google/flan-t5-large \
 --revision 0613663d0d48ea86ba8cb3d7a44f0f65dc596a2a \
 --port 5000
 

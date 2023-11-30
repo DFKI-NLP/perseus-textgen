@@ -11,7 +11,7 @@ srun -K \
 --mem 64GB \
 --gpus 1       \
 text-generation-launcher \
---model_id lmsys/vicuna-7b-v1.5 \
+--model-id lmsys/vicuna-7b-v1.5 \
 --revision de56c35b1763eaae20f4d60efd64af0a9091ebe5 \
 --port 5000
 
