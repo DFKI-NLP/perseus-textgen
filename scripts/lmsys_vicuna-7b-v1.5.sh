@@ -10,8 +10,9 @@ srun -K \
 -p A100-40GB     \
 --mem 64GB \
 --gpus 1       \
---export MODEL_ID=lmsys/vicuna-7b-v1.5 \
 text-generation-launcher \
+--model_id lmsys/vicuna-7b-v1.5 \
+--revision de56c35b1763eaae20f4d60efd64af0a9091ebe5 \
 --port 5000
 
 # HOW-TO ACCESS THE (EXECUTABLE) API DOCUMENTATION:

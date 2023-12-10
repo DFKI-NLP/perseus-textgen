@@ -1,17 +1,16 @@
 # NOTES:
-# - model card: https://huggingface.co/lmsys/vicuna-13b-v1.5
-# Works on A100-40GB, A100-PCI, RTX3090
-# Doesn't work on RTX6000
+# - model card: https://huggingface.co/google/flan-t5-large
+# Works on A100-40GB, A100-PCI V100-32GB, RTX6000, RTX3090
 
 srun -K \
---container-image=/netscratch/enroot/huggingface_text-generation-inference_1.1.0.sqsh \
---container-mounts=/netscratch:/netscratch,/ds:/ds,/ds/models/llms/cache:/data,$HOME:$HOME     \
---container-workdir=$HOME       \
--p A100-40GB     \
---mem 64GB \
---gpus 1       \
---export MODEL_ID=lmsys/vicuna-13b-v1.5 \
+--container-image=/netscratch/enroot/text-generation-inference_1.0.3.sqsh \
+--container-mounts=/netscratch:/netscratch,/ds:/ds,/ds/models/llms/cache:/data,$HOME:$HOME \
+--container-workdir=$HOME \
+-p RTX3090 \
+--mem 16GB --gpus 1 \
 text-generation-launcher \
+--model_id google/flan-t5-large \
+--revision 0613663d0d48ea86ba8cb3d7a44f0f65dc596a2a \
 --port 5000
 
 # HOW-TO ACCESS THE (EXECUTABLE) API DOCUMENTATION:
@@ -21,5 +20,3 @@ text-generation-launcher \
 # This should give you a list of jobs, each with a node name in the "NODELIST(REASON)" column, e.g. "serv-3316".
 # Then, you can access the API documentation at the following endpoint (replace $NODE with the node name):
 # http://$NODE.kl.dfki.de:5000/docs
-
-

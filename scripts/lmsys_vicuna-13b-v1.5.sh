@@ -1,5 +1,5 @@
 # NOTES:
-# - model card: 
+# - model card: https://huggingface.co/lmsys/vicuna-13b-v1.5
 # Works on A100-40GB, A100-PCI, RTX3090
 # Doesn't work on RTX6000
 
@@ -10,8 +10,9 @@ srun -K \
 -p A100-40GB     \
 --mem 64GB \
 --gpus 1       \
---export MODEL_ID=/ds/models/llms/llama_hf/7b \
 text-generation-launcher \
+--model_id lmsys/vicuna-13b-v1.5 \
+--revision de56c35b1763eaae20f4d60efd64af0a9091ebe5 \
 --port 5000
 
 # HOW-TO ACCESS THE (EXECUTABLE) API DOCUMENTATION:
