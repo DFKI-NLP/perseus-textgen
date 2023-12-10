@@ -1,1 +1,30 @@
-{"llama-2": {"description": "Based on information from https://huggingface.co/blog/llama2#how-to-prompt-llama-2", "template": "<s>[INST] <<SYS>>\n{system_prompt}\n<<SYS>>\n\nCurrent conversation:\n{{ history }}\n\n{% if history %}\n    <s>[INST] Human: {{ input }} [/INST] AI: </s>\n{% else %}\n    Human: {{ input }} [/INST] AI: </s>\n{% endif %}\n", "system_prior": "You are a helpful assistant."}}
+{
+    "llama-2": {
+      "description": "Based on information from https://huggingface.co/blog/llama2#how-to-prompt-llama-2",
+      "template": "<s>[INST] <<SYS>>\n{system_prompt}\n<<SYS>>\n\nCurrent conversation:\n{{ history }}\n\n{% if history %}\n    <s>[INST] Human: {{ input }} [/INST] AI: </s>\n{% else %}\n    Human: {{ input }} [/INST] AI: </s>\n{% endif %}\n",
+      "system_prior": "You are a helpful assistant.",
+      "user_prefix": "Human", 
+      "ai_prefix": "AI"
+    },
+    "upstage/SOLAR-0-70b-16bit": {
+      "description": "Based on information from https://huggingface.co/upstage/SOLAR-0-70b-16bit",
+      "template": "### System:\n{system_prompt}\n\nCurrent conversation:\n{{ history }}\n\n### User:\n{{ input }}\n\n### Assistant:\n",
+      "system_prior": "You are a helpful assistant.",
+      "user_prefix": "User", 
+      "ai_prefix": "Assistant"
+    },
+    "jphme/em_german_leo_mistral": {
+      "description": "Based on information from https://huggingface.co/jphme/em_german_leo_mistral",
+      "template": "{system_prompt} {{ history }} USER: {{ input }} ASSISTANT:",
+      "system_prior": "Du bist ein hilfreicher Assistent.",
+      "user_prefix": "USER", 
+      "ai_prefix": "ASSISTANT"
+    },
+    "jordiclive/Llama-2-70b-oasst-1-200": {
+      "description": "Based on information from https://huggingface.co/jordiclive/Llama-2-70b-oasst-1-200",
+      "template": "{system_prompt}{{history}<|prompter|>{{input}}</s><|assistant|></s>",
+      "system_prior": "",
+      "user_prefix": "<|prompter|>", 
+      "ai_prefix": "<|assistant|>"
+    }
+}
