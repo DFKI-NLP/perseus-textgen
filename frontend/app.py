@@ -35,14 +35,17 @@ DEFAULT_PARAMS = {
 TEMPLATES_FILE = Path(__file__).parent / "templates.json"
 DEFAULT_TEMPLATE = "llama-2"
 
+
 def get_info(endpoint: str) -> str:
     url = f"{endpoint}/info"
     r = requests.get(url=url)
     info = json.loads(r.text)
     return json.dumps(info, indent=2)
 
+
 def user(user_message, history):
     return "", history + [[user_message, None]]
+
 
 def bot(
     history: List[List[str]],
@@ -100,6 +103,7 @@ def bot(
         del history[-1]
         yield history, json.dumps(log, indent=2)
 
+
 def update_template_and_system_prior(template_key, template_str, system_prior, user_prefix_str, ai_prefix_str, templates):
     if template_key is None:
         return template_str, system_prior, user_prefix_str, ai_prefix_str
@@ -108,6 +112,7 @@ def update_template_and_system_prior(template_key, template_str, system_prior, u
     new_user_prefix_str = json.dumps(new_template_data["user_prefix"], indent=2)
     new_ai_prefix_str = json.dumps(new_template_data["ai_prefix"], indent=2)
     return new_template_str, new_template_data["system_prior"], new_user_prefix_str, new_ai_prefix_str
+
 
 def start():
     # load templates from json file
@@ -187,6 +192,7 @@ def start():
 
     demo.queue()
     demo.launch()
+
 
 if __name__ == "__main__":
     start()
