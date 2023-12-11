@@ -14,7 +14,7 @@ srun -K \
 --mem 64GB \
 --gpus 1 \
 text-generation-launcher \
---model_id $MODEL_ID \
+--model-id $MODEL_ID \
 --revision $REVISION \
 --quantize awq \
 --max-batch-prefill-tokens 1024 \
