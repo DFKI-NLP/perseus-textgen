@@ -33,8 +33,7 @@ DEFAULT_PARAMS = {
     "watermark": False,
 }
 TEMPLATES_FILE = Path(__file__).parent / "templates.json"
-DEFAULT_TEMPLATE = "llama-2"
-
+DEFAULT_TEMPLATE = "upstage/SOLAR-0-70b-16bit"
 
 def get_info(endpoint: str) -> str:
     url = f"{endpoint}/info"
