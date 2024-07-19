@@ -7,3 +7,4 @@ Certain models (e.g., Google-gemma, LLAMA3, etc.) require you to accept the lice
 
 ```sh
 huggingface-cli login --token <yourToken>
+```
