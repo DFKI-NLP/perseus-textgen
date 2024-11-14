@@ -5,7 +5,7 @@
 
 srun -K \
 --container-image=/netscratch/enroot/text-generation-inference_2.0.5-dev0.sqsh \
---container-mounts=/netscratch:/netscratch,/ds:/ds,/ds/models/llms/cache:/data,$HOME:$HOME     \
+--container-mounts=/netscratch:/netscratch,/ds:/ds,/ds/models/llms/cache:/data,$HOME:$HOME,$HOME/.cache/huggingface:/root/.cache/huggingface     \
 --container-workdir=$HOME       \
 -p A100-40GB     \
 --mem 64GB \
