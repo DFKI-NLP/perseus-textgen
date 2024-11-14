@@ -1,6 +1,5 @@
 # perseus-textgen
-A repository for scripts to run awesomely large language models with text generation inference APIs and (chat) UIs
-
+This repository contains scripts for running large language models using text generation inference APIs and (chat) UIs.
 
 ## Authentication
 Certain models (e.g., Google-gemma, LLAMA3, etc.) require you to accept the license on the Hugging Face website. To download these models to your machine, you need an authentication token from [Hugging Face](https://huggingface.co/settings/tokens). To register your token on your machine, run the following command:
@@ -8,6 +7,12 @@ Certain models (e.g., Google-gemma, LLAMA3, etc.) require you to accept the lice
 ```sh
 huggingface-cli login --token <yourToken>
 ```
+For proper functionality, ensure the script has access to your API key, typically located at `$HOME/.cache/huggingface`. Use the following snippet to mount this directory in your srun command:
+
+```sh
+$HOME/.cache/huggingface:/root/.cache/huggingface
+```
+
 ## Update the enroot image
 Newer models sometimes require a never enroot image. To generate a new image adapt the following code-snippted. 
 
